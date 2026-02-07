@@ -299,14 +299,4 @@ The `per_page` parameter only accepts: **10, 25, 50, or 100**. Other values will
 
 ## License
 
-[Add your license here]
-
-## Contributing
-
-[Add contribution guidelines here]
-
-## Support
-
-For issues or questions:
-- GitHub Issues: [Add repository URL]
-- Documentation: https://hub01-shop.srgnis.com/api/documentation
+[MIT](LICENSE.md)
