@@ -14,12 +14,7 @@ A Python client library for interacting with the [Hub01 Shop API](https://hub01-
 ## Installation
 
 ```bash
-# Clone the repository
-git clone <repository-url>
-cd hub01_shop_clients
-
-# The client has minimal dependencies
-pip install requests
+pip install hub01-client
 ```
 
 ## Quick Start
