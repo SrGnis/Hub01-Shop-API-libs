@@ -1,4 +1,4 @@
-# Hub01 Shop API Clients
+# Hub01 Shop API libs
 
 A collection of official client libraries for interacting with the [Hub01 Shop API](https://hub01-shop.srgnis.com/api).
 
