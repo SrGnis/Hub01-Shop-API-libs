@@ -420,8 +420,8 @@ def main():
     parser = argparse.ArgumentParser(description='Hub01 Shop API Integration Tests')
     parser.add_argument('--username', help='Username for authenticated tests')
     parser.add_argument('--token', help='API token for authenticated tests')
-    parser.add_argument('--base-url', default='http://192.168.0.105:8000/api', 
-                       help='API base URL (default: http://192.168.0.105:8000/api)')
+    parser.add_argument('--base-url', default='http://127.0.0.1:8000/api', 
+                       help='API base URL (default: http://127.0.0.1:8000/api)')
     
     args = parser.parse_args()
     
