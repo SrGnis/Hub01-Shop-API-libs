@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "hub01-client"
+version = "0.1.0"
+description = "A Python client library for interacting with the Hub01 Shop API"
+readme = "README.md"
+authors = [
+  { name = "Srgnis", email = "srgnis@srgnis.com" },
+]
+license = "MIT"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "requests",
+]
+requires-python = ">=3.7"
+
+[project.urls]
+"Homepage" = "https://github.com/SrGnis/Hub01-Shop-API-libs"
+"Bug Tracker" = "https://github.com/SrGnis/Hub01-Shop-API-libs/issues"
