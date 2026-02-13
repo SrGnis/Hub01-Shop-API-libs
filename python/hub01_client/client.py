@@ -79,6 +79,9 @@ class ProjectsClient(BaseClient):
         """
         Search projects. Returns a paginated response with data and meta.
         Use .get('data') to get list of Project objects manually or helpers.
+        
+        Args:
+            order_by: Field to order by. Valid values: 'name', 'created_at', 'updated_at', 'downloads'
         """
         params = {
             'project_type': project_type,

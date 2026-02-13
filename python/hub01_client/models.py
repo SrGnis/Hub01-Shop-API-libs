@@ -52,6 +52,7 @@ class Project:
     downloads: int
     created_at: str # Keep as string for simplicity, or parse to datetime
     last_release_date: Optional[str]
+    updated_at: Optional[str] = None  # Last update time of the project or one of its versions
     version_count: int = 0
     tags: List[str] = field(default_factory=list)
     members: List[Dict[str, Any]] = field(default_factory=list)
@@ -71,6 +72,7 @@ class Project:
             downloads=data['downloads'],
             created_at=data['created_at'],
             last_release_date=data.get('last_release_date'),
+            updated_at=data.get('updated_at'),
             version_count=data.get('version_count', 0),
             tags=data.get('tags') or [], # Handle null
             members=data.get('members', [])
