@@ -36,11 +36,23 @@ pub struct ProjectTag {
     pub name: String,
     pub slug: String,
     pub icon: String,
-    pub tag_group: String,
+    pub tag_group: Option<String>,
     pub project_types: Vec<String>,
-    pub main_tag: String,
+    pub main_tag: Option<String>,
     #[serde(default)]
     pub sub_tags: Vec<ProjectTag>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct ProjectVersionTag {
+    pub name: String,
+    pub slug: String,
+    pub icon: String,
+    pub tag_group: Option<String>,
+    pub project_types: Vec<String>,
+    pub main_tag: Option<String>,
+    #[serde(default)]
+    pub sub_tags: Vec<ProjectVersionTag>,
 }
 
 // ---------------------------------------------------------------------------
@@ -92,7 +104,7 @@ pub struct ProjectVersionDependency {
     #[serde(rename = "project")]
     pub project_slug: String,
     #[serde(rename = "version")]
-    pub version_slug: String,
+    pub version_slug: Option<String>,
     #[serde(rename = "type")]
     pub dep_type: String,
     pub external: bool,

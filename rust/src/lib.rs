@@ -25,11 +25,11 @@ pub mod models;
 // Re-export the main public types at the crate root for convenience.
 pub use client::{
     CreateVersionParams, Dependency, HubClient, ListProjectsParams, ListVersionsParams,
-    ProjectTypesClient, ProjectVersionsClient, ProjectsClient, TagsClient,
-    UpdateVersionParams, UsersClient,
+    ProjectTypesClient, ProjectVersionsClient, ProjectsClient, TagsClient, UpdateVersionParams,
+    UsersClient,
 };
 pub use error::HubApiError;
 pub use models::{
     PaginatedResponse, Project, ProjectFile, ProjectTag, ProjectType, ProjectVersion,
-    ProjectVersionDependency, User,
+    ProjectVersionDependency, ProjectVersionTag, User,
 };

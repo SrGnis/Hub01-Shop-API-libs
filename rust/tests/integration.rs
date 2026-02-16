@@ -1,9 +1,8 @@
 //! Integration tests for the Hub01 Shop API Rust client.
 //!
-//! Mirrors the Python `test_integration.py`.  Read-only tests run without
-//! authentication.  Set the environment variables `HUB01_USERNAME` and
-//! `HUB01_TOKEN` (or provide `username` and `api_key` files next to the
-//! test runner) to enable authenticated tests.
+//! Read-only tests run without authentication.  Set the environment variables
+//! `HUB01_USERNAME` and `HUB01_TOKEN` (or provide `username` and `api_key`
+//! files next to the test runner) to enable authenticated tests.
 //!
 //! Run with:
 //!
@@ -18,9 +17,12 @@ fn read_credential_file(name: &str) -> Option<String> {
     fs::read_to_string(name).ok().map(|s| s.trim().to_string())
 }
 
+fn create_dummy_file(content: &str) -> (String, Vec<u8>) {
+    ("test_file.txt".to_string(), content.as_bytes().to_vec())
+}
+
 fn base_url() -> String {
-    std::env::var("HUB01_BASE_URL")
-        .unwrap_or_else(|_| "https://hub01-shop.srgnis.com/api".into())
+    std::env::var("HUB01_BASE_URL").unwrap_or_else(|_| "https://hub01-shop.srgnis.com/api".into())
 }
 
 fn credentials() -> (Option<String>, Option<String>) {
@@ -244,7 +246,11 @@ fn test_authenticated_operations() {
     // 9. Get user
     println!("[9] Testing get user profile");
     let user = client.users().get(&username).unwrap();
-    println!("  ✓ User: {} (bio: {})", user.username, user.bio.as_deref().unwrap_or("None"));
+    println!(
+        "  ✓ User: {} (bio: {})",
+        user.username,
+        user.bio.as_deref().unwrap_or("None")
+    );
 
     // 10. Get user projects
     println!("[10] Testing get user projects");
@@ -262,8 +268,69 @@ fn test_authenticated_operations() {
 
     // 11. Create version
     println!("[11] Testing create version");
+
+    // Find a dependency
+    let mut dependencies_list: Option<Vec<hub01_client::Dependency>> = None;
+    let mut found_deps: Vec<(String, String)> = Vec::new();
+
+    if let Ok(projects_resp) = client.projects().list(&ListProjectsParams {
+        per_page: 10,
+        ..Default::default()
+    }) {
+        for proj in projects_resp.data {
+            if proj.slug != test_slug {
+                if let Ok(vers_resp) = client.versions().list(
+                    &proj.slug,
+                    &ListVersionsParams {
+                        per_page: 5,
+                        ..Default::default()
+                    },
+                ) {
+                    if let Some(v) = vers_resp.data.first() {
+                        found_deps.push((proj.slug.clone(), v.version.clone()));
+                        if dependencies_list.is_none() {
+                            dependencies_list = Some(vec![hub01_client::Dependency {
+                                project: proj.slug.clone(),
+                                version: v.version.clone(),
+                                dep_type: "optional".into(),
+                                external: false,
+                            }]);
+                            println!("  Using dependency: {} v{}", proj.slug, v.version);
+                        }
+                        if found_deps.len() >= 2 {
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Find version tags
+    let mut version_tags_list: Option<Vec<String>> = None;
+    let all_version_tags = client
+        .tags()
+        .list_version_tags(true, None)
+        .unwrap_or_default();
+    if all_version_tags.len() >= 2 {
+        let tags = vec![
+            all_version_tags[0].slug.clone(),
+            all_version_tags[1].slug.clone(),
+        ];
+        println!("  Using version tags: {:?}", tags);
+        version_tags_list = Some(tags);
+    }
+
     let today = chrono_today();
-    let version_slug = format!("test-api-{}", today.replace('-', ""));
+    let timestamp = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_secs();
+    let version_slug = format!("test-api-{}", timestamp);
+
+    // Create a dummy file
+    let (file_name, file_content) =
+        create_dummy_file("This is a test file created by integration test");
 
     use hub01_client::CreateVersionParams;
     let new_version = client
@@ -276,16 +343,61 @@ fn test_authenticated_operations() {
                 release_type: "alpha".into(),
                 release_date: today.clone(),
                 changelog: "Test version created by Rust integration test".into(),
-                tags: None,
-                dependencies: None,
+                tags: version_tags_list,
+                dependencies: dependencies_list,
             },
-            &[("test_file.txt", b"Test file content".to_vec())],
+            &[(&file_name, file_content)],
         )
         .unwrap();
     println!("  ✓ Created version: {}", new_version.version);
+    println!("  - Name: {}", new_version.name);
+    println!("  - Release type: {}", new_version.release_type);
+    println!("  - Files: {}", new_version.files.len());
+    println!("  - Dependencies: {}", new_version.dependencies.len());
+    println!("  - Tags: {}", new_version.tags.len());
 
     // 12. Update version
     println!("[12] Testing update version");
+
+    // Prepare updated dependencies
+    let mut update_dependencies: Option<Vec<hub01_client::Dependency>> = None;
+    if found_deps.len() > 0 {
+        let mut new_deps = Vec::new();
+        // Add existing one as required (if we have more than 1)
+        for (i, (p, v)) in found_deps.iter().enumerate() {
+            new_deps.push(hub01_client::Dependency {
+                project: p.clone(),
+                version: v.clone(),
+                dep_type: if i == 0 && found_deps.len() > 1 {
+                    "required".into()
+                } else {
+                    "optional".into()
+                },
+                external: false,
+            });
+            if new_deps.len() >= 2 {
+                break;
+            }
+        }
+        update_dependencies = Some(new_deps);
+        println!(
+            "  Updating with dependencies count: {}",
+            update_dependencies.as_ref().unwrap().len()
+        );
+    }
+
+    // Prepare updated tags
+    let mut update_tags_list: Option<Vec<String>> = None;
+    if all_version_tags.len() >= 5 {
+        let tags = vec![
+            all_version_tags[2].slug.clone(),
+            all_version_tags[3].slug.clone(),
+            all_version_tags[4].slug.clone(),
+        ];
+        println!("  Updating with version tags: {:?}", tags);
+        update_tags_list = Some(tags);
+    }
+
     use hub01_client::UpdateVersionParams;
     let updated = client
         .versions()
@@ -297,12 +409,24 @@ fn test_authenticated_operations() {
                 release_type: Some("beta".into()),
                 release_date: Some(today),
                 changelog: Some("Updated by Rust integration test".into()),
+                tags: update_tags_list,
+                dependencies: update_dependencies,
                 ..Default::default()
             },
             None,
         )
         .unwrap();
-    println!("  ✓ Updated version: {} ({})", updated.version, updated.release_type);
+
+    println!(
+        "  ✓ Updated version: {} ({})",
+        updated.version, updated.release_type
+    );
+    println!("  - Dependencies: {}", updated.dependencies.len());
+    println!("  - Tags: {}", updated.tags.len());
+    println!(
+        "  - Changelog length: {}",
+        updated.changelog.as_deref().unwrap_or("").len()
+    );
 
     // 13. Delete version
     println!("[13] Testing delete version");
@@ -339,7 +463,16 @@ fn chrono_today() -> String {
     let month_days: [u64; 12] = [
         31,
         if leap { 29 } else { 28 },
-        31, 30, 31, 30, 31, 31, 30, 31, 30, 31,
+        31,
+        30,
+        31,
+        30,
+        31,
+        31,
+        30,
+        31,
+        30,
+        31,
     ];
     let mut m = 1u32;
     for &md in &month_days {

@@ -31,10 +31,12 @@ impl BaseClient {
             reqwest::header::HeaderValue::from_static("application/json"),
         );
         if let Some(tok) = token {
-            let val = reqwest::header::HeaderValue::from_str(&format!("Bearer {tok}"))
-                .map_err(|e| HubApiError::Api {
-                    status: 0,
-                    message: format!("Invalid token header value: {e}"),
+            let val =
+                reqwest::header::HeaderValue::from_str(&format!("Bearer {tok}")).map_err(|e| {
+                    HubApiError::Api {
+                        status: 0,
+                        message: format!("Invalid token header value: {e}"),
+                    }
                 })?;
             headers.insert(reqwest::header::AUTHORIZATION, val);
         }
@@ -128,11 +130,7 @@ impl BaseClient {
         endpoint: &str,
         form: multipart::Form,
     ) -> Result<Option<serde_json::Value>> {
-        let resp = self
-            .http
-            .post(self.url(endpoint))
-            .multipart(form)
-            .send()?;
+        let resp = self.http.post(self.url(endpoint)).multipart(form).send()?;
         self.handle_response(resp)
     }
 
@@ -220,23 +218,21 @@ impl ProjectTypesClient<'_> {
     pub fn list(&self) -> Result<Vec<ProjectType>> {
         let data = self.base.get("/v1/project_types", &[])?;
         let wrapper: DataWrapper<Vec<ProjectType>> =
-            serde_json::from_value(data.unwrap_or_default())
-                .map_err(|e| HubApiError::Api {
-                    status: 0,
-                    message: format!("Deserialization error: {e}"),
-                })?;
+            serde_json::from_value(data.unwrap_or_default()).map_err(|e| HubApiError::Api {
+                status: 0,
+                message: format!("Deserialization error: {e}"),
+            })?;
         Ok(wrapper.data)
     }
 
     /// Get a single project type by slug.
     pub fn get(&self, slug: &str) -> Result<ProjectType> {
         let data = self.base.get(&format!("/v1/project_type/{slug}"), &[])?;
-        let wrapper: DataWrapper<ProjectType> =
-            serde_json::from_value(data.unwrap_or_default())
-                .map_err(|e| HubApiError::Api {
-                    status: 0,
-                    message: format!("Deserialization error: {e}"),
-                })?;
+        let wrapper: DataWrapper<ProjectType> = serde_json::from_value(data.unwrap_or_default())
+            .map_err(|e| HubApiError::Api {
+                status: 0,
+                message: format!("Deserialization error: {e}"),
+            })?;
         Ok(wrapper.data)
     }
 }
@@ -320,24 +316,22 @@ impl ProjectsClient<'_> {
         }
 
         let data = self.base.get("/v1/projects", &query)?;
-        let resp: PaginatedResponse<Project> =
-            serde_json::from_value(data.unwrap_or_default())
-                .map_err(|e| HubApiError::Api {
-                    status: 0,
-                    message: format!("Deserialization error: {e}"),
-                })?;
+        let resp: PaginatedResponse<Project> = serde_json::from_value(data.unwrap_or_default())
+            .map_err(|e| HubApiError::Api {
+                status: 0,
+                message: format!("Deserialization error: {e}"),
+            })?;
         Ok(resp)
     }
 
     /// Get a single project by slug.
     pub fn get(&self, slug: &str) -> Result<Project> {
         let data = self.base.get(&format!("/v1/project/{slug}"), &[])?;
-        let wrapper: DataWrapper<Project> =
-            serde_json::from_value(data.unwrap_or_default())
-                .map_err(|e| HubApiError::Api {
-                    status: 0,
-                    message: format!("Deserialization error: {e}"),
-                })?;
+        let wrapper: DataWrapper<Project> = serde_json::from_value(data.unwrap_or_default())
+            .map_err(|e| HubApiError::Api {
+                status: 0,
+                message: format!("Deserialization error: {e}"),
+            })?;
         Ok(wrapper.data)
     }
 }
@@ -424,11 +418,10 @@ impl ProjectVersionsClient<'_> {
             .base
             .get(&format!("/v1/project/{slug}/versions"), &query)?;
         let resp: PaginatedResponse<ProjectVersion> =
-            serde_json::from_value(data.unwrap_or_default())
-                .map_err(|e| HubApiError::Api {
-                    status: 0,
-                    message: format!("Deserialization error: {e}"),
-                })?;
+            serde_json::from_value(data.unwrap_or_default()).map_err(|e| HubApiError::Api {
+                status: 0,
+                message: format!("Deserialization error: {e}"),
+            })?;
         Ok(resp)
     }
 
@@ -437,12 +430,11 @@ impl ProjectVersionsClient<'_> {
         let data = self
             .base
             .get(&format!("/v1/project/{slug}/version/{version}"), &[])?;
-        let wrapper: DataWrapper<ProjectVersion> =
-            serde_json::from_value(data.unwrap_or_default())
-                .map_err(|e| HubApiError::Api {
-                    status: 0,
-                    message: format!("Deserialization error: {e}"),
-                })?;
+        let wrapper: DataWrapper<ProjectVersion> = serde_json::from_value(data.unwrap_or_default())
+            .map_err(|e| HubApiError::Api {
+                status: 0,
+                message: format!("Deserialization error: {e}"),
+            })?;
         Ok(wrapper.data)
     }
 
@@ -494,12 +486,11 @@ impl ProjectVersionsClient<'_> {
         let data = self
             .base
             .post_multipart(&format!("/v1/project/{slug}/versions"), form)?;
-        let wrapper: DataWrapper<ProjectVersion> =
-            serde_json::from_value(data.unwrap_or_default())
-                .map_err(|e| HubApiError::Api {
-                    status: 0,
-                    message: format!("Deserialization error: {e}"),
-                })?;
+        let wrapper: DataWrapper<ProjectVersion> = serde_json::from_value(data.unwrap_or_default())
+            .map_err(|e| HubApiError::Api {
+                status: 0,
+                message: format!("Deserialization error: {e}"),
+            })?;
         Ok(wrapper.data)
     }
 
@@ -573,12 +564,11 @@ impl ProjectVersionsClient<'_> {
         let data = self
             .base
             .post_multipart(&format!("/v1/project/{slug}/version/{version}"), form)?;
-        let wrapper: DataWrapper<ProjectVersion> =
-            serde_json::from_value(data.unwrap_or_default())
-                .map_err(|e| HubApiError::Api {
-                    status: 0,
-                    message: format!("Deserialization error: {e}"),
-                })?;
+        let wrapper: DataWrapper<ProjectVersion> = serde_json::from_value(data.unwrap_or_default())
+            .map_err(|e| HubApiError::Api {
+                status: 0,
+                message: format!("Deserialization error: {e}"),
+            })?;
         Ok(wrapper.data)
     }
 
@@ -609,25 +599,21 @@ impl TagsClient<'_> {
         }
         let data = self.base.get("/v1/project_tags", &query)?;
         let wrapper: DataWrapper<Vec<ProjectTag>> =
-            serde_json::from_value(data.unwrap_or_default())
-                .map_err(|e| HubApiError::Api {
-                    status: 0,
-                    message: format!("Deserialization error: {e}"),
-                })?;
+            serde_json::from_value(data.unwrap_or_default()).map_err(|e| HubApiError::Api {
+                status: 0,
+                message: format!("Deserialization error: {e}"),
+            })?;
         Ok(wrapper.data)
     }
 
     /// Get a single project tag by slug.
     pub fn get_project_tag(&self, slug: &str) -> Result<ProjectTag> {
-        let data = self
-            .base
-            .get(&format!("/v1/project_tag/{slug}"), &[])?;
-        let wrapper: DataWrapper<ProjectTag> =
-            serde_json::from_value(data.unwrap_or_default())
-                .map_err(|e| HubApiError::Api {
-                    status: 0,
-                    message: format!("Deserialization error: {e}"),
-                })?;
+        let data = self.base.get(&format!("/v1/project_tag/{slug}"), &[])?;
+        let wrapper: DataWrapper<ProjectTag> = serde_json::from_value(data.unwrap_or_default())
+            .map_err(|e| HubApiError::Api {
+                status: 0,
+                message: format!("Deserialization error: {e}"),
+            })?;
         Ok(wrapper.data)
     }
 
@@ -636,32 +622,28 @@ impl TagsClient<'_> {
         &self,
         plain: bool,
         project_type: Option<&str>,
-    ) -> Result<Vec<ProjectTag>> {
+    ) -> Result<Vec<ProjectVersionTag>> {
         let mut query: Vec<(String, String)> = vec![("plain".into(), plain.to_string())];
         if let Some(pt) = project_type {
             query.push(("project_type".into(), pt.into()));
         }
         let data = self.base.get("/v1/version_tags", &query)?;
-        let wrapper: DataWrapper<Vec<ProjectTag>> =
-            serde_json::from_value(data.unwrap_or_default())
-                .map_err(|e| HubApiError::Api {
-                    status: 0,
-                    message: format!("Deserialization error: {e}"),
-                })?;
+        let wrapper: DataWrapper<Vec<ProjectVersionTag>> =
+            serde_json::from_value(data.unwrap_or_default()).map_err(|e| HubApiError::Api {
+                status: 0,
+                message: format!("Deserialization error: {e}"),
+            })?;
         Ok(wrapper.data)
     }
 
     /// Get a single version tag by slug.
-    pub fn get_version_tag(&self, slug: &str) -> Result<ProjectTag> {
-        let data = self
-            .base
-            .get(&format!("/v1/version_tag/{slug}"), &[])?;
-        let wrapper: DataWrapper<ProjectTag> =
-            serde_json::from_value(data.unwrap_or_default())
-                .map_err(|e| HubApiError::Api {
-                    status: 0,
-                    message: format!("Deserialization error: {e}"),
-                })?;
+    pub fn get_version_tag(&self, slug: &str) -> Result<ProjectVersionTag> {
+        let data = self.base.get(&format!("/v1/version_tag/{slug}"), &[])?;
+        let wrapper: DataWrapper<ProjectVersionTag> =
+            serde_json::from_value(data.unwrap_or_default()).map_err(|e| HubApiError::Api {
+                status: 0,
+                message: format!("Deserialization error: {e}"),
+            })?;
         Ok(wrapper.data)
     }
 }
@@ -677,25 +659,21 @@ impl UsersClient<'_> {
     pub fn get(&self, name: &str) -> Result<User> {
         let data = self.base.get(&format!("/v1/user/{name}"), &[])?;
         let wrapper: DataWrapper<User> =
-            serde_json::from_value(data.unwrap_or_default())
-                .map_err(|e| HubApiError::Api {
-                    status: 0,
-                    message: format!("Deserialization error: {e}"),
-                })?;
+            serde_json::from_value(data.unwrap_or_default()).map_err(|e| HubApiError::Api {
+                status: 0,
+                message: format!("Deserialization error: {e}"),
+            })?;
         Ok(wrapper.data)
     }
 
     /// Get projects owned by a user.
     pub fn get_projects(&self, name: &str) -> Result<PaginatedResponse<Project>> {
-        let data = self
-            .base
-            .get(&format!("/v1/user/{name}/projects"), &[])?;
-        let resp: PaginatedResponse<Project> =
-            serde_json::from_value(data.unwrap_or_default())
-                .map_err(|e| HubApiError::Api {
-                    status: 0,
-                    message: format!("Deserialization error: {e}"),
-                })?;
+        let data = self.base.get(&format!("/v1/user/{name}/projects"), &[])?;
+        let resp: PaginatedResponse<Project> = serde_json::from_value(data.unwrap_or_default())
+            .map_err(|e| HubApiError::Api {
+                status: 0,
+                message: format!("Deserialization error: {e}"),
+            })?;
         Ok(resp)
     }
 }
