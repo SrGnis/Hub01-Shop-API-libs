@@ -20,9 +20,9 @@ class ProjectTag:
     name: str
     slug: str
     icon: str
-    tag_group: str
+    tag_group: Optional[str]
     project_types: List[str]
-    main_tag: str
+    main_tag: Optional[str]
     sub_tags: List['ProjectTag'] = field(default_factory=list)
 
     @classmethod
@@ -32,9 +32,32 @@ class ProjectTag:
             name=data['name'],
             slug=data['slug'],
             icon=data['icon'],
-            tag_group=data['tag_group'],
+            tag_group=data.get('tag_group'),
             project_types=data['project_types'],
-            main_tag=data['main_tag'],
+            main_tag=data.get('main_tag'),
+            sub_tags=sub_tags
+        )
+
+@dataclass
+class ProjectVersionTag:
+    name: str
+    slug: str
+    icon: str
+    tag_group: Optional[str]
+    project_types: List[str]
+    main_tag: Optional[str]
+    sub_tags: List['ProjectVersionTag'] = field(default_factory=list)
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'ProjectVersionTag':
+        sub_tags = [cls.from_dict(t) for t in data.get('sub_tags', [])] if 'sub_tags' in data else []
+        return cls(
+            name=data['name'],
+            slug=data['slug'],
+            icon=data['icon'],
+            tag_group=data.get('tag_group'),
+            project_types=data['project_types'],
+            main_tag=data.get('main_tag'),
             sub_tags=sub_tags
         )
 
@@ -97,7 +120,7 @@ class ProjectFile:
 @dataclass
 class ProjectVersionDependency:
     project_slug: str
-    version_slug: str
+    version_slug: Optional[str]
     type: str # required, optional, embedded
     external: bool
 
@@ -105,7 +128,7 @@ class ProjectVersionDependency:
     def from_dict(cls, data: Dict[str, Any]) -> 'ProjectVersionDependency':
         return cls(
             project_slug=data['project'],
-            version_slug=data['version'],
+            version_slug=data.get('version'),
             type=data['type'],
             external=data['external']
         )

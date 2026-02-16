@@ -35,7 +35,7 @@ from datetime import date
 # Ensure the current directory is in the path
 sys.path.insert(0, os.path.abspath('.'))
 
-from hub01_client import HubClient, HubAPIException, AuthenticationException
+from hub01_client import HubClient, HubAPIException, AuthenticationException, ProjectVersionTag, ProjectTag
 
 def read_credential_file(filename):
     """Read credential from file if exists"""
@@ -88,6 +88,10 @@ def run_tests(base_url, username=None, token=None):
         tags = client.tags.list_project_tags(plain=True)
         print(f"✓ Found {len(tags)} project tags")
         if tags:
+            # Verify type
+            if not isinstance(tags[0], ProjectTag):
+                print(f"✗ FAILED: Expected ProjectTag, got {type(tags[0])}")
+            
             print(f"  - First tag: {tags[0].name} ({tags[0].slug})")
             
             # Get specific tag
@@ -104,6 +108,10 @@ def run_tests(base_url, username=None, token=None):
         version_tags = client.tags.list_version_tags(plain=True)
         print(f"✓ Found {len(version_tags)} version tags")
         if version_tags:
+            # Verify type
+            if not isinstance(version_tags[0], ProjectVersionTag):
+                print(f"✗ FAILED: Expected ProjectVersionTag, got {type(version_tags[0])}")
+            
             print(f"  - First tag: {version_tags[0].name}")
     except Exception as e:
         print(f"✗ FAILED: {e}")

@@ -1,4 +1,7 @@
 from .client import HubClient
+from .models import (
+    ProjectType, ProjectTag, ProjectVersionTag, Project, ProjectVersion, User
+)
 from .exceptions import (
     HubAPIException,
     AuthenticationException,
@@ -13,5 +16,11 @@ __all__ = [
     'AuthenticationException',
     'PermissionDeniedException',
     'NotFoundException',
-    'ValidationException'
+    'ValidationException',
+    'ProjectType',
+    'ProjectTag',
+    'ProjectVersionTag',
+    'Project',
+    'ProjectVersion',
+    'User'
 ]

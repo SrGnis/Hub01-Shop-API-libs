@@ -5,7 +5,7 @@ from .exceptions import (
     NotFoundException, ValidationException
 )
 from .models import (
-    ProjectType, Project, ProjectVersion, ProjectTag, User
+    ProjectType, Project, ProjectVersion, ProjectTag, ProjectVersionTag, User
 )
 
 class BaseClient:
@@ -269,17 +269,16 @@ class TagsClient(BaseClient):
         response = self._request('GET', f'/v1/project_tag/{slug}')
         return ProjectTag.from_dict(response.get('data'))
 
-    def list_version_tags(self, plain: bool = False, project_type: Optional[str] = None) -> List[ProjectTag]: # Reusing ProjectTag as structure seems similar enough or should create ProjectVersionTag
+    def list_version_tags(self, plain: bool = False, project_type: Optional[str] = None) -> List[ProjectVersionTag]:
         params = {'plain': plain}
         if project_type:
             params['project_type'] = project_type
         response = self._request('GET', '/v1/version_tags', params=params)
-        # Spec says ProjectVersionTagResource, which is identical structure to ProjectTagResource in properties shown
-        return [ProjectTag.from_dict(item) for item in response.get('data', [])]
+        return [ProjectVersionTag.from_dict(item) for item in response.get('data', [])]
 
-    def get_version_tag(self, slug: str) -> ProjectTag:
+    def get_version_tag(self, slug: str) -> ProjectVersionTag:
         response = self._request('GET', f'/v1/version_tag/{slug}')
-        return ProjectTag.from_dict(response.get('data'))
+        return ProjectVersionTag.from_dict(response.get('data'))
 
 class UsersClient(BaseClient):
     def get(self, name: str) -> User:
