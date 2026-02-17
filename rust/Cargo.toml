@@ -9,8 +9,14 @@ homepage = "https://github.com/SrGnis/Hub01-Shop-API-libs"
 repository = "https://github.com/SrGnis/Hub01-Shop-API-libs"
 authors = ["Srgnis <srgnis@srgnis.com>"]
 
+[[bin]]
+name = "hub01-tui"
+path = "src/bin/hub01-tui.rs"
+
 [dependencies]
 reqwest = { version = "0.12", features = ["blocking", "json", "multipart"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 thiserror = "2"
+ratatui = "0.29"
+crossterm = "0.28"
