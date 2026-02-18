@@ -593,7 +593,11 @@ impl TagsClient<'_> {
         plain: bool,
         project_type: Option<&str>,
     ) -> Result<Vec<ProjectTag>> {
-        let mut query: Vec<(String, String)> = vec![("plain".into(), plain.to_string())];
+        let mut query: Vec<(String, String)> = Vec::new();
+        // Only add plain parameter when true - the API checks for existence, not value
+        if plain {
+            query.push(("plain".into(), "true".into()));
+        }
         if let Some(pt) = project_type {
             query.push(("project_type".into(), pt.into()));
         }
@@ -623,7 +627,11 @@ impl TagsClient<'_> {
         plain: bool,
         project_type: Option<&str>,
     ) -> Result<Vec<ProjectVersionTag>> {
-        let mut query: Vec<(String, String)> = vec![("plain".into(), plain.to_string())];
+        let mut query: Vec<(String, String)> = Vec::new();
+        // Only add plain parameter when true - the API checks for existence, not value
+        if plain {
+            query.push(("plain".into(), "true".into()));
+        }
         if let Some(pt) = project_type {
             query.push(("project_type".into(), pt.into()));
         }
