@@ -22,7 +22,7 @@ fn create_dummy_file(content: &str) -> (String, Vec<u8>) {
 }
 
 fn base_url() -> String {
-    std::env::var("HUB01_BASE_URL").unwrap_or_else(|_| "https://hub01-shop.srgnis.com/api".into())
+    std::env::var("HUB01_BASE_URL").unwrap_or_else(|_| "http://127.0.0.1:8000/api".into())
 }
 
 fn credentials() -> (Option<String>, Option<String>) {
@@ -361,7 +361,7 @@ fn test_authenticated_operations() {
 
     // Prepare updated dependencies
     let mut update_dependencies: Option<Vec<hub01_client::Dependency>> = None;
-    if found_deps.len() > 0 {
+    if !found_deps.is_empty() {
         let mut new_deps = Vec::new();
         // Add existing one as required (if we have more than 1)
         for (i, (p, v)) in found_deps.iter().enumerate() {

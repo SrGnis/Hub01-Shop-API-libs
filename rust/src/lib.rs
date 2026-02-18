@@ -21,6 +21,7 @@
 pub mod client;
 pub mod error;
 pub mod models;
+pub mod tui;
 
 // Re-export the main public types at the crate root for convenience.
 pub use client::{
