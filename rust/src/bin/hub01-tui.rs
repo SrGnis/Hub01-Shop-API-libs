@@ -498,7 +498,6 @@ fn render_type_selection(f: &mut Frame, state: &AppState) {
                 Style::default()
             };
             Row::new(vec![
-                Cell::from(t.icon.clone()),
                 Cell::from(t.name.clone()),
                 Cell::from(t.slug.clone()),
             ])
@@ -511,7 +510,7 @@ fn render_type_selection(f: &mut Frame, state: &AppState) {
         [Constraint::Length(4), Constraint::Length(20), Constraint::Length(15)],
     )
     .header(
-        Row::new(vec!["", "Name", "Slug"])
+        Row::new(vec!["Name", "Slug"])
             .style(Style::default().add_modifier(Modifier::BOLD))
             .bottom_margin(1),
     )
@@ -577,12 +576,19 @@ fn render_project_table(f: &mut Frame, state: &AppState) {
         .block(Block::default().borders(Borders::ALL));
     f.render_widget(title, chunks[0]);
 
-    // Project table with all columns
+    // Project table (max 10 visible rows)
+    let visible_row_limit = 10usize;
+    let visible_start = state
+        .selected_row
+        .saturating_sub(visible_row_limit.saturating_sub(1));
+
     let rows: Vec<Row> = state
         .projects
         .data
         .iter()
         .enumerate()
+        .skip(visible_start)
+        .take(visible_row_limit)
         .map(|(i, p)| {
             let style = if i == state.selected_row {
                 Style::default()
@@ -666,7 +672,16 @@ fn render_project_table(f: &mut Frame, state: &AppState) {
             .borders(Borders::ALL)
             .title(" Projects "),
     );
-    f.render_widget(table, chunks[1]);
+
+    // Cap rendered table height to: 10 data rows + 1 header + 1 header margin + 2 borders = 14
+    let max_table_height = 14;
+    let table_area = Rect {
+        x: chunks[1].x,
+        y: chunks[1].y,
+        width: chunks[1].width,
+        height: chunks[1].height.min(max_table_height),
+    };
+    f.render_widget(table, table_area);
 
     // Help text with new keybindings
     let help = Paragraph::new("n: Next | p: Prev | f: Filter | s: Search | o: Sort | r: Reset | t: Back | q: Quit")
@@ -801,7 +816,7 @@ fn render_tag_filter(f: &mut Frame, state: &AppState) {
                 "[ ]"
             };
             
-            let display_name = format!("{}{} {} {}", indent, checkbox, tag.icon, tag.name);
+            let display_name = format!("{}{} {} | {}", indent, checkbox, tag.slug, tag.name);
             
             project_rows.push(Row::new(vec![Cell::from(display_name)]).style(style));
         }
@@ -847,7 +862,7 @@ fn render_tag_filter(f: &mut Frame, state: &AppState) {
                 "[ ]"
             };
             
-            let display_name = format!("{}{} {} {}", indent, checkbox, tag.icon, tag.name);
+            let display_name = format!("{}{} {} | {}", indent, checkbox, tag.slug, tag.name);
             
             version_rows.push(Row::new(vec![Cell::from(display_name)]).style(style));
         }
