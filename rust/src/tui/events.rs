@@ -17,6 +17,8 @@ pub fn handle_event(event: Event, state: &mut AppState) {
             AppScreen::UrlInput => handle_url_input(key_event, state),
             AppScreen::TypeSelection => handle_type_selection(key_event, state),
             AppScreen::ProjectTable => handle_project_table(key_event, state),
+            AppScreen::ProjectDetails => handle_project_details(key_event, state),
+            AppScreen::VersionDetails => handle_version_details(key_event, state),
             AppScreen::TagFilter => handle_tag_filter(key_event, state),
             AppScreen::SearchInput => handle_search_input(key_event, state),
             AppScreen::SortOptions => handle_sort_options(key_event, state),
@@ -148,8 +150,91 @@ fn handle_project_table(event: KeyEvent, state: &mut AppState) {
             state.reset_filters();
             state.screen = AppScreen::LoadingProjects;
         }
+        KeyCode::Enter => {
+            if !state.projects.data.is_empty() {
+                state.screen = AppScreen::LoadingProjectDetails;
+                state.clear_error();
+                state.clear_success();
+            } else {
+                state.set_error("No project selected".to_string());
+            }
+        }
         KeyCode::Char('q') => {
             state.should_quit = true;
+        }
+        _ => {}
+    }
+}
+
+fn handle_project_details(event: KeyEvent, state: &mut AppState) {
+    match event.code {
+        KeyCode::Up => {
+            if state.selected_version_row > 0 {
+                state.selected_version_row -= 1;
+            }
+        }
+        KeyCode::Down => {
+            if state.selected_version_row < state.project_versions.data.len().saturating_sub(1) {
+                state.selected_version_row += 1;
+            }
+        }
+        KeyCode::Char('n') => {
+            if state.versions_current_page < state.versions_total_pages {
+                state.versions_current_page += 1;
+                state.screen = AppScreen::LoadingProjectVersions;
+            }
+        }
+        KeyCode::Char('p') => {
+            if state.versions_current_page > 1 {
+                state.versions_current_page -= 1;
+                state.screen = AppScreen::LoadingProjectVersions;
+            }
+        }
+        KeyCode::Enter => {
+            if !state.project_versions.data.is_empty() {
+                state.screen = AppScreen::LoadingVersionDetails;
+                state.clear_error();
+                state.clear_success();
+            } else {
+                state.set_error("No version selected".to_string());
+            }
+        }
+        KeyCode::Esc => {
+            state.screen = AppScreen::ProjectTable;
+            state.clear_error();
+        }
+        _ => {}
+    }
+}
+
+fn handle_version_details(event: KeyEvent, state: &mut AppState) {
+    match event.code {
+        KeyCode::Up => {
+            if state.selected_file_row > 0 {
+                state.selected_file_row -= 1;
+            }
+        }
+        KeyCode::Down => {
+            let total_files = state
+                .selected_version
+                .as_ref()
+                .map(|v| v.files.len())
+                .unwrap_or(0);
+            if state.selected_file_row < total_files.saturating_sub(1) {
+                state.selected_file_row += 1;
+            }
+        }
+        KeyCode::Enter => match state.download_selected_file() {
+            Ok(saved_name) => {
+                state.set_success(format!("Downloaded file: {saved_name}"));
+            }
+            Err(e) => {
+                state.set_error(e);
+            }
+        },
+        KeyCode::Esc => {
+            state.screen = AppScreen::ProjectDetails;
+            state.clear_error();
         }
         _ => {}
     }

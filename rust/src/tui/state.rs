@@ -1,8 +1,14 @@
-use std::collections::HashSet;
+use std::{
+    collections::HashSet,
+    fs,
+    path::{Path, PathBuf},
+};
+
+use reqwest::blocking::Client as HttpClient;
 
 use crate::{
-    HubClient, ListProjectsParams, PaginatedResponse, Project, ProjectTag, ProjectType,
-    ProjectVersionTag,
+    HubClient, ListProjectsParams, ListVersionsParams, PaginatedResponse, Project, ProjectTag,
+    ProjectType, ProjectVersion, ProjectVersionTag,
 };
 
 /// Represents which tag table is currently focused.
@@ -27,6 +33,16 @@ pub(crate) enum AppScreen {
     LoadingProjects,
     /// Project table screen with pagination.
     ProjectTable,
+    /// Loading selected project details and its first versions page.
+    LoadingProjectDetails,
+    /// Selected project details with versions table.
+    ProjectDetails,
+    /// Loading versions page for selected project.
+    LoadingProjectVersions,
+    /// Loading selected project version details.
+    LoadingVersionDetails,
+    /// Selected project version details with downloadable files.
+    VersionDetails,
     /// Tag filter selection screen.
     TagFilter,
     /// Loading tags from API.
@@ -97,8 +113,28 @@ pub struct AppState {
     pub(crate) selected_row: usize,
     /// Error message to display.
     pub(crate) error_message: Option<String>,
+    /// Non-error status message (e.g. successful downloads).
+    pub(crate) success_message: Option<String>,
     /// Should the application quit?
     pub should_quit: bool,
+
+    // Project details state
+    /// Currently selected project details.
+    pub(crate) selected_project: Option<Project>,
+    /// Paginated versions of the selected project.
+    pub(crate) project_versions: PaginatedResponse<ProjectVersion>,
+    /// Current selected project's versions page (1-indexed).
+    pub(crate) versions_current_page: u32,
+    /// Total selected project's versions pages.
+    pub(crate) versions_total_pages: u32,
+    /// Selected row in versions table.
+    pub(crate) selected_version_row: usize,
+
+    // Version details state
+    /// Currently selected version details.
+    pub(crate) selected_version: Option<ProjectVersion>,
+    /// Selected row in version files table.
+    pub(crate) selected_file_row: usize,
 
     // Filter state
     /// List of available tags for filtering.
@@ -157,7 +193,19 @@ impl Default for AppState {
             total_pages: 1,
             selected_row: 0,
             error_message: None,
+            success_message: None,
             should_quit: false,
+            selected_project: None,
+            project_versions: PaginatedResponse {
+                data: Vec::new(),
+                meta: None,
+                links: None,
+            },
+            versions_current_page: 1,
+            versions_total_pages: 1,
+            selected_version_row: 0,
+            selected_version: None,
+            selected_file_row: 0,
             available_tags: Vec::new(),
             selected_tags: HashSet::new(),
             tag_table_focus: TagTableFocus::ProjectTags,
@@ -245,12 +293,7 @@ impl AppState {
         match client.projects().list(&params) {
             Ok(response) => {
                 self.projects = response;
-                if let Some(meta) = &self.projects.meta {
-                    if let Some(total) = meta.get("total").and_then(|t| t.as_u64()) {
-                        let per_page = meta.get("per_page").and_then(|p| p.as_u64()).unwrap_or(10);
-                        self.total_pages = ((total as f64) / (per_page as f64)).ceil() as u32;
-                    }
-                }
+                self.total_pages = Self::calculate_total_pages(self.projects.meta.as_ref(), 10);
                 self.selected_row = 0;
                 Ok(())
             }
@@ -316,6 +359,125 @@ impl AppState {
         self.current_page = 1;
     }
 
+    /// Fetch details for the currently selected project in project table.
+    pub(crate) fn fetch_selected_project_details(&mut self) -> Result<(), String> {
+        let client = self.client.as_ref().ok_or("Client not initialized")?;
+        let project = self
+            .projects
+            .data
+            .get(self.selected_row)
+            .ok_or("No project selected")?;
+
+        match client.projects().get(&project.slug) {
+            Ok(project_details) => {
+                self.selected_project = Some(project_details);
+                self.project_versions = PaginatedResponse {
+                    data: Vec::new(),
+                    meta: None,
+                    links: None,
+                };
+                self.selected_version = None;
+                self.selected_file_row = 0;
+                self.selected_version_row = 0;
+                self.versions_current_page = 1;
+                self.versions_total_pages = 1;
+                Ok(())
+            }
+            Err(e) => Err(format!("Failed to fetch project details: {e}")),
+        }
+    }
+
+    /// Fetch paginated versions for currently selected project.
+    pub(crate) fn fetch_project_versions(&mut self) -> Result<(), String> {
+        let client = self.client.as_ref().ok_or("Client not initialized")?;
+        let project = self
+            .selected_project
+            .as_ref()
+            .ok_or("No selected project details loaded")?;
+
+        let params = ListVersionsParams {
+            per_page: 10,
+            page: self.versions_current_page,
+            ..Default::default()
+        };
+
+        match client.versions().list(&project.slug, &params) {
+            Ok(response) => {
+                self.project_versions = response;
+                self.versions_total_pages =
+                    Self::calculate_total_pages(self.project_versions.meta.as_ref(), 10);
+                self.selected_version_row = 0;
+                Ok(())
+            }
+            Err(e) => Err(format!("Failed to fetch project versions: {e}")),
+        }
+    }
+
+    /// Fetch selected version details from versions table selection.
+    pub(crate) fn fetch_selected_version_details(&mut self) -> Result<(), String> {
+        let client = self.client.as_ref().ok_or("Client not initialized")?;
+        let project = self
+            .selected_project
+            .as_ref()
+            .ok_or("No selected project details loaded")?;
+        let version = self
+            .project_versions
+            .data
+            .get(self.selected_version_row)
+            .ok_or("No version selected")?;
+
+        match client.versions().get(&project.slug, &version.version) {
+            Ok(version_details) => {
+                self.selected_version = Some(version_details);
+                self.selected_file_row = 0;
+                Ok(())
+            }
+            Err(e) => Err(format!("Failed to fetch version details: {e}")),
+        }
+    }
+
+    /// Download currently selected file in version details screen to current working directory.
+    pub(crate) fn download_selected_file(&mut self) -> Result<String, String> {
+        let _client = self.client.as_ref().ok_or("Client not initialized")?;
+        let version = self
+            .selected_version
+            .as_ref()
+            .ok_or("No version details loaded")?;
+        let file = version
+            .files
+            .get(self.selected_file_row)
+            .ok_or("No file selected")?;
+
+        let http = HttpClient::new();
+        let response = http
+            .get(&file.url)
+            .send()
+            .map_err(|e| format!("Failed to download file: {e}"))?;
+
+        let status = response.status();
+        if !status.is_success() {
+            let reason = response
+                .text()
+                .unwrap_or_else(|_| format!("HTTP {}", status.as_u16()));
+            return Err(format!("Failed to download file: {reason}"));
+        }
+
+        let bytes = response
+            .bytes()
+            .map_err(|e| format!("Failed to read downloaded bytes: {e}"))?;
+
+        let target_path = ensure_unique_file_path(&file.name);
+        fs::write(&target_path, bytes)
+            .map_err(|e| format!("Failed to write file '{}': {e}", target_path.display()))?;
+
+        let filename = target_path
+            .file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or(&file.name)
+            .to_string();
+        Ok(filename)
+    }
+
     /// Clear any error message.
     pub(crate) fn clear_error(&mut self) {
         self.error_message = None;
@@ -323,6 +485,64 @@ impl AppState {
 
     /// Set an error message.
     pub(crate) fn set_error(&mut self, message: String) {
+        self.success_message = None;
         self.error_message = Some(message);
     }
+
+    /// Clear non-error success message.
+    pub(crate) fn clear_success(&mut self) {
+        self.success_message = None;
+    }
+
+    /// Set a non-error status message.
+    pub(crate) fn set_success(&mut self, message: String) {
+        self.error_message = None;
+        self.success_message = Some(message);
+    }
+
+    fn calculate_total_pages(meta: Option<&serde_json::Value>, default_per_page: u64) -> u32 {
+        let Some(meta) = meta else {
+            return 1;
+        };
+
+        let total = meta.get("total").and_then(|t| t.as_u64()).unwrap_or(0);
+        let per_page = meta
+            .get("per_page")
+            .and_then(|p| p.as_u64())
+            .unwrap_or(default_per_page)
+            .max(1);
+
+        let pages = ((total as f64) / (per_page as f64)).ceil() as u32;
+        pages.max(1)
+    }
+}
+
+fn ensure_unique_file_path(file_name: &str) -> PathBuf {
+    let mut candidate = PathBuf::from(file_name);
+    if !candidate.exists() {
+        return candidate;
+    }
+
+    let stem = Path::new(file_name)
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .unwrap_or("download");
+    let ext = Path::new(file_name)
+        .extension()
+        .and_then(|e| e.to_str())
+        .unwrap_or("");
+
+    for i in 1..=9_999 {
+        let next_name = if ext.is_empty() {
+            format!("{stem}-{i}")
+        } else {
+            format!("{stem}-{i}.{ext}")
+        };
+        candidate = PathBuf::from(&next_name);
+        if !candidate.exists() {
+            return candidate;
+        }
+    }
+
+    PathBuf::from(format!("{stem}-overflow"))
 }

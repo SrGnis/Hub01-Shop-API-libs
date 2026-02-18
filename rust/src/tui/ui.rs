@@ -15,6 +15,11 @@ pub fn render(f: &mut Frame, state: &AppState) {
         AppScreen::TypeSelection => render_type_selection(f, state),
         AppScreen::LoadingProjects => render_loading(f, state, "Loading projects"),
         AppScreen::ProjectTable => render_project_table(f, state),
+        AppScreen::LoadingProjectDetails => render_loading(f, state, "Loading project details"),
+        AppScreen::ProjectDetails => render_project_details(f, state),
+        AppScreen::LoadingProjectVersions => render_loading(f, state, "Loading project versions"),
+        AppScreen::LoadingVersionDetails => render_loading(f, state, "Loading version details"),
+        AppScreen::VersionDetails => render_version_details(f, state),
         AppScreen::TagFilter => render_tag_filter(f, state),
         AppScreen::LoadingTags => render_loading(f, state, "Loading tags"),
         AppScreen::SearchInput => render_search_input(f, state),
@@ -303,13 +308,226 @@ fn render_project_table(f: &mut Frame, state: &AppState) {
     f.render_widget(table, table_area);
 
     let help = Paragraph::new(
-        "n: Next | p: Prev | f: Filter | s: Search | o: Sort | r: Reset | t: Back | q: Quit",
+        "Enter: Open | n: Next | p: Prev | f: Filter | s: Search | o: Sort | r: Reset | t: Back | q: Quit",
     )
     .style(Style::default().fg(Color::DarkGray))
     .alignment(Alignment::Center);
     f.render_widget(help, chunks[2]);
 
     render_status_bar(f, chunks[3], state);
+}
+
+/// Render selected project details including description and versions table.
+fn render_project_details(f: &mut Frame, state: &AppState) {
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .margin(2)
+        .constraints([
+            Constraint::Length(3),
+            Constraint::Length(5),
+            Constraint::Length(6),
+            Constraint::Min(8),
+            Constraint::Length(2),
+            Constraint::Length(2),
+        ])
+        .split(f.area());
+
+    let project = state.selected_project.as_ref();
+    let title_text = if let Some(project) = project {
+        format!(
+            "Project - {} | Versions Page {}/{}",
+            project.name, state.versions_current_page, state.versions_total_pages
+        )
+    } else {
+        "Project - N/A".to_string()
+    };
+
+    let title = Paragraph::new(title_text)
+        .style(Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD))
+        .alignment(Alignment::Center)
+        .block(Block::default().borders(Borders::ALL));
+    f.render_widget(title, chunks[0]);
+
+    let basic_info = if let Some(project) = project {
+        format!(
+            "Name: {}\nSlug: {}\nStatus: {} | Downloads: {}",
+            project.name,
+            project.slug,
+            project.status,
+            format_number(project.downloads)
+        )
+    } else {
+        "No project selected".to_string()
+    };
+    let basic_info_widget = Paragraph::new(basic_info)
+        .block(Block::default().borders(Borders::ALL).title(" Basic Info "));
+    f.render_widget(basic_info_widget, chunks[1]);
+
+    let description = project
+        .and_then(|p| p.description.clone())
+        .filter(|d| !d.trim().is_empty())
+        .unwrap_or_else(|| "No description available".to_string());
+    let description_widget = Paragraph::new(clamp_text_lines(&description, 4))
+        .block(Block::default().borders(Borders::ALL).title(" Description "));
+    f.render_widget(description_widget, chunks[2]);
+
+    let rows: Vec<Row> = state
+        .project_versions
+        .data
+        .iter()
+        .enumerate()
+        .map(|(i, version)| {
+            let style = if i == state.selected_version_row {
+                Style::default()
+                    .fg(Color::Black)
+                    .bg(Color::Cyan)
+                    .add_modifier(Modifier::BOLD)
+            } else {
+                Style::default()
+            };
+
+            let release_date = if version.release_date.len() >= 10 {
+                version.release_date[..10].to_string()
+            } else {
+                version.release_date.clone()
+            };
+
+            Row::new(vec![
+                Cell::from(version.version.clone()),
+                Cell::from(version.release_type.clone()),
+                Cell::from(format_number(version.downloads)),
+                Cell::from(release_date),
+                Cell::from(version.files.len().to_string()),
+            ])
+            .style(style)
+        })
+        .collect();
+
+    let versions_table = Table::new(
+        rows,
+        [
+            Constraint::Length(20),
+            Constraint::Length(12),
+            Constraint::Length(12),
+            Constraint::Length(12),
+            Constraint::Length(8),
+        ],
+    )
+    .header(
+        Row::new(vec!["Version", "Type", "Downloads", "Release", "Files"])
+            .style(Style::default().add_modifier(Modifier::BOLD))
+            .bottom_margin(1),
+    )
+    .block(Block::default().borders(Borders::ALL).title(" Versions "));
+    f.render_widget(versions_table, chunks[3]);
+
+    let help = Paragraph::new("Up/Down: Select | Enter: Open Version | n/p: Page | Esc: Back | q: Quit")
+        .style(Style::default().fg(Color::DarkGray))
+        .alignment(Alignment::Center);
+    f.render_widget(help, chunks[4]);
+
+    render_status_bar(f, chunks[5], state);
+}
+
+/// Render selected version details and downloadable files.
+fn render_version_details(f: &mut Frame, state: &AppState) {
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .margin(2)
+        .constraints([
+            Constraint::Length(3),
+            Constraint::Length(5),
+            Constraint::Length(6),
+            Constraint::Min(8),
+            Constraint::Length(2),
+            Constraint::Length(2),
+        ])
+        .split(f.area());
+
+    let version = state.selected_version.as_ref();
+    let title_text = if let Some(version) = version {
+        format!("Version - {}", version.version)
+    } else {
+        "Version - N/A".to_string()
+    };
+
+    let title = Paragraph::new(title_text)
+        .style(Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD))
+        .alignment(Alignment::Center)
+        .block(Block::default().borders(Borders::ALL));
+    f.render_widget(title, chunks[0]);
+
+    let metadata = if let Some(version) = version {
+        format!(
+            "Name: {}\nType: {}\nRelease Date: {} | Downloads: {}",
+            version.name,
+            version.release_type,
+            version.release_date,
+            format_number(version.downloads)
+        )
+    } else {
+        "No version selected".to_string()
+    };
+    let metadata_widget = Paragraph::new(metadata)
+        .block(Block::default().borders(Borders::ALL).title(" Version Info "));
+    f.render_widget(metadata_widget, chunks[1]);
+
+    let changelog = version
+        .and_then(|v| v.changelog.clone())
+        .filter(|c| !c.trim().is_empty())
+        .unwrap_or_else(|| "No changelog available".to_string());
+    let changelog_widget = Paragraph::new(clamp_text_lines(&changelog, 4))
+        .block(Block::default().borders(Borders::ALL).title(" Changelog "));
+    f.render_widget(changelog_widget, chunks[2]);
+
+    let rows: Vec<Row> = version
+        .map(|v| {
+            v.files
+                .iter()
+                .enumerate()
+                .map(|(i, file)| {
+                    let style = if i == state.selected_file_row {
+                        Style::default()
+                            .fg(Color::Black)
+                            .bg(Color::Cyan)
+                            .add_modifier(Modifier::BOLD)
+                    } else {
+                        Style::default()
+                    };
+
+                    Row::new(vec![
+                        Cell::from(file.name.clone()),
+                        Cell::from(format_size(file.size)),
+                        Cell::from(file.sha1.chars().take(12).collect::<String>()),
+                    ])
+                    .style(style)
+                })
+                .collect()
+        })
+        .unwrap_or_default();
+
+    let files_table = Table::new(
+        rows,
+        [
+            Constraint::Min(30),
+            Constraint::Length(12),
+            Constraint::Length(14),
+        ],
+    )
+    .header(
+        Row::new(vec!["File", "Size", "SHA1"])
+            .style(Style::default().add_modifier(Modifier::BOLD))
+            .bottom_margin(1),
+    )
+    .block(Block::default().borders(Borders::ALL).title(" Downloadable Files "));
+    f.render_widget(files_table, chunks[3]);
+
+    let help = Paragraph::new("Up/Down: Select File | Enter: Download | Esc: Back | q: Quit")
+        .style(Style::default().fg(Color::DarkGray))
+        .alignment(Alignment::Center);
+    f.render_widget(help, chunks[4]);
+
+    render_status_bar(f, chunks[5], state);
 }
 
 /// Render the tag filter screen with side-by-side scrollable tables.
@@ -541,12 +759,16 @@ fn render_sort_options(f: &mut Frame, state: &AppState) {
 fn render_status_bar(f: &mut Frame, area: Rect, state: &AppState) {
     let status_text = if let Some(ref error) = state.error_message {
         format!(" Error: {}", error)
+    } else if let Some(ref success) = state.success_message {
+        format!(" Status: {}", success)
     } else {
         format!(" Connected to: {}", state.api_url)
     };
 
     let style = if state.error_message.is_some() {
         Style::default().fg(Color::Red)
+    } else if state.success_message.is_some() {
+        Style::default().fg(Color::Green)
     } else {
         Style::default().fg(Color::Green)
     };
@@ -572,4 +794,25 @@ fn format_number(n: u64) -> String {
         result.insert(0, c);
     }
     result
+}
+
+fn clamp_text_lines(text: &str, max_lines: usize) -> String {
+    text.lines().take(max_lines).collect::<Vec<_>>().join("\n")
+}
+
+fn format_size(bytes: u64) -> String {
+    const KB: f64 = 1024.0;
+    const MB: f64 = KB * 1024.0;
+    const GB: f64 = MB * 1024.0;
+
+    let b = bytes as f64;
+    if b >= GB {
+        format!("{:.2} GB", b / GB)
+    } else if b >= MB {
+        format!("{:.2} MB", b / MB)
+    } else if b >= KB {
+        format!("{:.2} KB", b / KB)
+    } else {
+        format!("{} B", bytes)
+    }
 }

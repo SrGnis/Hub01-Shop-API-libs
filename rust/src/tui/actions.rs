@@ -31,6 +31,33 @@ pub fn process_state(state: &mut AppState) {
                 state.screen = AppScreen::ProjectTable;
             }
         },
+        AppScreen::LoadingProjectDetails => match state.fetch_selected_project_details() {
+            Ok(()) => {
+                state.screen = AppScreen::LoadingProjectVersions;
+            }
+            Err(e) => {
+                state.set_error(e);
+                state.screen = AppScreen::ProjectTable;
+            }
+        },
+        AppScreen::LoadingProjectVersions => match state.fetch_project_versions() {
+            Ok(()) => {
+                state.screen = AppScreen::ProjectDetails;
+            }
+            Err(e) => {
+                state.set_error(e);
+                state.screen = AppScreen::ProjectDetails;
+            }
+        },
+        AppScreen::LoadingVersionDetails => match state.fetch_selected_version_details() {
+            Ok(()) => {
+                state.screen = AppScreen::VersionDetails;
+            }
+            Err(e) => {
+                state.set_error(e);
+                state.screen = AppScreen::ProjectDetails;
+            }
+        },
         _ => {}
     }
 }
