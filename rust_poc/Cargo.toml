@@ -1,0 +1,13 @@
+[package]
+name = "hub01-tui-poc"
+version = "0.1.0"
+edition = "2021"
+description = "TUI proof-of-concept for Hub01 Shop using published hub01-client"
+license = "MIT"
+
+[dependencies]
+hub01-client = "0.1.2"
+ratatui = "0.29"
+crossterm = "0.28"
+reqwest = { version = "0.12", features = ["blocking"] }
+serde_json = "1"

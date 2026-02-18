@@ -6,7 +6,7 @@ use std::{
 
 use reqwest::blocking::Client as HttpClient;
 
-use crate::{
+use hub01_client::{
     HubClient, ListProjectsParams, ListVersionsParams, PaginatedResponse, Project, ProjectTag,
     ProjectType, ProjectVersion, ProjectVersionTag,
 };

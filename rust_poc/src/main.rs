@@ -3,10 +3,12 @@
 //! A terminal user interface for browsing Hub01 Shop projects.
 
 use crossterm::event;
-use hub01_client::tui::{
+use crate::tui::{
     handle_event, process_state, render, restore_terminal, setup_terminal, AppState,
 };
 use std::time::Duration;
+
+mod tui;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut terminal = setup_terminal()?;
