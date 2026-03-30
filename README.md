@@ -7,6 +7,7 @@ A collection of official client libraries for interacting with the [Hub01 Shop A
 | Language | Status | Directory | Package |
 |----------|--------|-----------|---------|
 | **Python** | ✅ Available | [`python/`](python/) | [`hub01-client`](https://pypi.org/project/hub01-client/) |
+| **Rust** | ✅ Available | [`rust/`](rust/) | [`hub01-client`](https://crates.io/crates/hub01-client) |
 | **Node.js** | 🚧 Planned | - | - |
 
 ## Documentation
